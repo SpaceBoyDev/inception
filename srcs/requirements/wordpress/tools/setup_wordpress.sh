@@ -9,6 +9,11 @@ if [ -n "$WORDPRESS_DB_PASSWORD_FILE" ] && [ -f "$WORDPRESS_DB_PASSWORD_FILE" ];
     export WORDPRESS_DB_PASSWORD
 fi
 
+: "${WORDPRESS_DB_NAME:?WORDPRESS_DB_NAME is not set}"
+: "${WORDPRESS_DB_USER:?WORDPRESS_DB_USER is not set}"
+: "${WORDPRESS_DB_HOST:?WORDPRESS_DB_HOST is not set}"
+: "${WORDPRESS_DB_PASSWORD:?WORDPRESS_DB_PASSWORD is not set}"
+
 echo "Setting up WordPress..."
 
 # Download and configure WordPress if not present
