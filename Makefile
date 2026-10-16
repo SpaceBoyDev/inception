@@ -18,6 +18,15 @@ up:
 down:
 	docker compose -f $(COMPOSE_FILE) down
 
+cert:
+	mkcert -install
+	mkcert \
+  		-cert-file darmarti.42.fr.pem \
+  		-key-file darmarti.42.fr-key.pem \
+  		darmarti.42.fr
+	chmod 644 darmarti.42.fr.pem
+	chmod 600 darmarti.42.fr-key.pem
+
 clean:
 	docker compose -f $(COMPOSE_FILE) down
 	docker system prune -af
