@@ -2,6 +2,19 @@
 
 set -e
 
+if [ -n "${MYSQL_ROOT_PASSWORD_FILE:-}" ] && [ -f "$MYSQL_ROOT_PASSWORD_FILE" ]; then
+    MYSQL_ROOT_PASSWORD=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
+fi
+
+if [ -n "${MYSQL_PASSWORD_FILE:-}" ] && [ -f "$MYSQL_PASSWORD_FILE" ]; then
+    MYSQL_PASSWORD=$(cat "$MYSQL_PASSWORD_FILE")
+fi
+
+: "${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is not set}"
+: "${MYSQL_DATABASE:?MYSQL_DATABASE is not set}"
+: "${MYSQL_USER:?MYSQL_USER is not set}"
+: "${MYSQL_PASSWORD:?MYSQL_PASSWORD is not set}"
+
 echo "Starting MariaDB initialization..."
 
 # Initialize MySQL data directory if it doesn't exist
