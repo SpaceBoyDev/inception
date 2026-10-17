@@ -1,7 +1,8 @@
 FROM debian:bookworm
 
 # Install MariaDB
-RUN apt-get update && apt-get install -y mariadb-server \
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y mariadb-server \
     && rm -rf /var/lib/apt/lists/*
 
 # Create directories
@@ -11,18 +12,12 @@ RUN mkdir -p /var/run/mysqld \
 
 # Copy configuration
 COPY conf/50-server.cnf /etc/mysql/mariadb.conf.d/
-COPY tools/init_db.sh /usr/local/bin/
+COPY tools/init_db.sh .
+
 
 # Set permissions
-
-RUN chmod +x /usr/local/bin/init_db.sh
-
-# Env variables
-ENV MYSQL_ROOT_PASSWORD=root \
-    MYSQL_DATABASE=app_db \
-    MYSQL_USER=app_user \
-    MYSQL_PASSWORD=app_pass
+RUN chmod +x ./init_db.sh
 
 EXPOSE 3306
 
-ENTRYPOINT ["/usr/local/bin/init_db.sh"]
+ENTRYPOINT ["./init_db.sh"]
