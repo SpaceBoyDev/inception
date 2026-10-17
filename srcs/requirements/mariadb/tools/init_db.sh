@@ -10,7 +10,7 @@ mkdir -p /var/lib/mysql /run/mysqld /var/log/mysql && chown -R mysql:mysql /var/
 # Get credentials from secrets (automatically mounted in /run)
 : "${MYSQL_DATABASE:?MYSQL_DATABASE is not set}"
 : "${MYSQL_USER:?MYSQL_USER is not set}"
-SQL_PASSWORD=$(cat /run/secrets/db_password)
+SQL_PASSWORD=$(cat /run/secrets/db_user_password)
 SQL_ROOT_PASSWORD=$(cat /run/secrets/db_root_password)
 
 if [ ! -d "/var/lib/mysql/$MYSQL_DATABASE" ]; then # If db doesnt exist

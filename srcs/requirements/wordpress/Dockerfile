@@ -1,14 +1,13 @@
 FROM debian:bookworm
 
-
 RUN apt-get update -y  && apt-get upgrade -y \
     && apt-get install -y wget
 
-RUN wget https://wordpress.org/wordpress-6.9.3.tar.gz -P /var/www
+RUN wget https://wordpress.org/wordpress-7.1.3.tar.gz -P /var/www
 
 # move to /var/www and unzip. Remove file
-RUN cd /var/www && tar -xzf wordpress-6.9.3.tar.gz \
-	&& rm wordpress-6.9.3.tar.gz
+RUN cd /var/www && tar -xzf wordpress-7.1.3.tar.gz \
+	&& rm wordpress-7.1.3.tar.gz
 
 # Change owner to root recursively for everything inside
 RUN chown -R root:root /var/www/wordpress

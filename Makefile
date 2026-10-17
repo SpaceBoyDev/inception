@@ -1,7 +1,7 @@
 COMPOSE_FILE = ./srcs/docker-compose.yml
 DATA_DIR = /home/$(USER)/data
 
-all: setup
+all: setup build up
 
 $(DATA_DIR)/mariadb:
 	mkdir -p $(DATA_DIR)/mariadb

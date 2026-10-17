@@ -3,14 +3,14 @@ set -e
 
 echo "----------- Wordpress: Initializing... ----------"
 
-WP_PATH="/var/www/html"
+WP_PATH="/var/www/wordpress"
 
 : "${WORDPRESS_DB_NAME:?WORDPRESS_DB_NAME is not set}"
 : "${WORDPRESS_DB_USER:?WORDPRESS_DB_USER is not set}"
 : "${WORDPRESS_DB_HOST:?WORDPRESS_DB_HOST is not set}"
-: "${WORDPRESS_DB_PASSWORD_FILE:?WORDPRESS_DB_PASSWORD_FILE is not set}"
+# : "${WORDPRESS_DB_PASSWORD_FILE:?WORDPRESS_DB_PASSWORD_FILE is not set}"
 
-WORDPRESS_DB_PASSWORD=$(cat "$WORDPRESS_DB_PASSWORD_FILE")
+WORDPRESS_DB_PASSWORD=$(cat /run/secrets/db_user_password)
 
 # Ensure PHP runtime dir exists
 mkdir -p /run/php
