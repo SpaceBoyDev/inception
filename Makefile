@@ -1,5 +1,7 @@
 COMPOSE_FILE = ./srcs/docker-compose.yml
 DATA_DIR = /home/$(USER)/data
+DOMAIN_NAME = darmarti.42.fr
+HOST_IP = $(shell hostname -I | awk '{print $$1}')
 
 all: setup build up
 
@@ -12,8 +14,10 @@ $(DATA_DIR)/wordpress:
 setup:
 	sudo mkdir -p $(DATA_DIR)/mariadb
 	sudo mkdir -p $(DATA_DIR)/wordpress
-	sudo chown -R 777 $(DATA_DIR)/mariadb
-	sudo chown -R 777 $(DATA_DIR)/wordpress
+	sudo chmod -R 777 $(DATA_DIR)/mariadb
+	sudo chmod -R 777 $(DATA_DIR)/wordpress
+	sudo sed -i '/[[:space:]]$(DOMAIN_NAME)\([[:space:]]\|$$\)/d' /etc/hosts
+	echo "$(HOST_IP) $(DOMAIN_NAME)" | sudo tee -a /etc/hosts >/dev/null
 
 build: $(DATA_DIR)/mariadb $(DATA_DIR)/wordpress
 	docker compose -f $(COMPOSE_FILE) build
