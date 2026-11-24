@@ -6,13 +6,13 @@ WP_USER_PASS=$(cat /run/secrets/wp_user_password)
 set -e
 
 if [ ! -f "/var/www/html/wp-config.php" ]; then
-	echo "Descargando WordPress..."
+	echo "Downloading WordPress..."
 	wp core download --allow-root
-	echo "Esperando a MariaDB..."
+	echo "Waiting for MariaDB..."
 	while ! mariadb -h"${SQL_HOST}" -u"${SQL_USER}" -p"${DB_PASS}" -e "SELECT 1;" >/dev/null 2>&1; do
 		sleep 1
 	done
-	echo "MariaDB está listo."
+	echo "MariaDB is ready"
 	wp config create --allow-root \
 		--dbname="${SQL_DATABASE}" \
 		--dbuser="${SQL_USER}" \
@@ -31,6 +31,6 @@ if [ ! -f "/var/www/html/wp-config.php" ]; then
 	chown -R nobody:nobody /var/www/html
 	find /var/www/html -type d -exec chmod 755 {} \;
 	find /var/www/html -type f -exec chmod 644 {} \;
-	echo "WordPress instalado y configurado correctamente."
+	echo "WordPress install complete"
 fi
 exec "$@"
