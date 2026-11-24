@@ -1,23 +1,13 @@
-FROM debian:bookworm
+FROM alpine:3.23
 
-# Install MariaDB
-RUN apt-get update && apt-get upgrade -y \
-    && apt-get install -y mariadb-server \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create directories
-RUN mkdir -p /var/run/mysqld \
-    && chown -R mysql:mysql /var/run/mysqld \
-    && chmod 755 /var/run/mysqld
-
-# Copy configuration
-COPY conf/50-server.cnf /etc/mysql/mariadb.conf.d/
-COPY tools/init_db.sh .
-
-
-# Set permissions
-RUN chmod +x ./init_db.sh
+RUN apk update && apk add mariadb mariadb-client
+RUN mkdir -p /run/mysqld && chown -R mysql:mysql /run/mysqld
 
 EXPOSE 3306
 
-ENTRYPOINT ["./init_db.sh"]
+COPY ./entrypoint.sh  /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+CMD ["mysqld", "--user=mysql", "--console" ]

@@ -1,33 +1,16 @@
-FROM debian:bookworm
+FROM alpine:3.23
 
-# Install nginx and openssl
-RUN apt-get update -y  && apt-get upgrade -y \
-    && apt-get install -y nginx openssl \
-    && rm -rf /var/lib/apt/lists/*
+ARG DOMAIN_NAME=dario.42.fr
 
-# Ensure nginx runs as www-data with correct UID
-RUN usermod -u 33 www-data && groupmod -g 33 www-data
+RUN apk update && apk add nginx openssl
 
-# Create SSL directory
-RUN mkdir -p /etc/nginx/ssl
+RUN mkdir -p /etc/nginx/ssl /var/run/nginx
 
-RUN openssl req -x509 -nodes \
-	-out /etc/nginx/ssl/cert.crt \
-	-keyout /etc/nginx/ssl/certkey.key \
-	-subj "/C=SP/ST=Mad/L=Mad/O=42/OU=42Mad/CN=${WP_URL}"
+RUN openssl req -x509 -nodes -out /etc/nginx/ssl/inception.crt -keyout /etc/nginx/ssl/inception.key -subj "/C=ES/ST=Madrid/L=Madrid/O=42/OU=42/CN=${DOMAIN_NAME}/UID=dario"
 
-RUN mkdir -p /var/run/nginx
-
-# Copy configuration files
-COPY conf/nginx.conf /etc/nginx/nginx.conf
-COPY tools/generate_ssl.sh /usr/local/bin/
-
-# Set permissions
-RUN chmod +x /usr/local/bin/*.sh
-RUN chmod 755 /var/www/html
-RUN chown -R www-data:www-data /var/www/html
+COPY /conf/nginx.conf /etc/nginx/http.d/default.conf
+RUN sed -i "s|server_name .*;|server_name ${DOMAIN_NAME};|" /etc/nginx/http.d/default.conf
 
 EXPOSE 443
 
-CMD [ "nginx", "-g", "daemon off;" ]
-# ENTRYPOINT ["/usr/local/bin/generate_ssl.sh"]
+CMD ["nginx", "-g", "daemon off;"]

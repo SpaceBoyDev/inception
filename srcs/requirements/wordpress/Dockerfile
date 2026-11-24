@@ -1,49 +1,31 @@
-FROM debian:bookworm
+FROM alpine:3.23
 
-RUN apt-get update -y  && apt-get upgrade -y \
-    && apt-get install -y wget
+RUN apk update && apk add \
+php83 \
+php83-fpm \
+php83-mysqli \
+php83-phar \
+php83-mbstring \
+php83-curl \
+php83-gd \
+mariadb-client \
+wget
 
-RUN wget https://wordpress.org/wordpress-7.1.3.tar.gz -P /var/www
+RUN ln -s /usr/bin/php83 /usr/bin/php
 
-# move to /var/www and unzip. Remove file
-RUN cd /var/www && tar -xzf wordpress-7.1.3.tar.gz \
-	&& rm wordpress-7.1.3.tar.gz
+RUN sed -i 's/listen = 127.0.0.1:9000/listen = 9000/g' /etc/php83/php-fpm.d/www.conf
+RUN wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+    chmod +x wp-cli.phar && \
+    mv wp-cli.phar /usr/local/bin/wp
+RUN echo "memory_limit = 256M" > /etc/php83/conf.d/wp-cli-memory.ini
+WORKDIR /var/www/html
 
-# Change owner to root recursively for everything inside
-RUN chown -R root:root /var/www/wordpress
-
-# ------------------------- PHP-FPM ----------------------------
-
-# Install php, fpm and mysql client
-RUN apt-get install -y \
-	php8.2 \
-	php-fpm \
-	php-mysql
-
-# Copy config from host to default PHP config file location
-COPY conf/www.conf /etc/php/8.2/fpm/pool.d/www.conf
-
-# ---------------------- WORDPRESS CLI -------------------------
-
-# Install CLI to manage wordpress from the terminal
-# Set it to be executable
-# Move it to the proper directory
-RUN wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-RUN chmod +x wp-cli.phar
-RUN mv wp-cli.phar /usr/local/bin/wp
-
-# ---------------------- MariaDB client ------------------------
-# To chech if MariaDB is reachable (from the following script)
-RUN apt-get install -y mariadb-client
-
-# ---------------------- Initialization script
-
-COPY tools/setupwp.sh .
-RUN chmod +x ./setupwp.sh
-
-# Document the port that will be used by WP
 EXPOSE 9000
 
-ENTRYPOINT ["./setupwp.sh"]
+COPY ./entrypoint.sh /usr/local/bin/
 
-# ENTRYPOINT ["/usr/local/bin/setup_wordpress.sh"]
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+CMD ["php-fpm83", "-F"]

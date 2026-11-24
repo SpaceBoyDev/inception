@@ -1,4 +1,5 @@
-*pem
-test/
-.pdf
+/data/
+srcs/.env
+*.crt
+*.key
 secrets/
