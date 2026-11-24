@@ -32,5 +32,12 @@ if [ ! -f "/var/www/html/wp-config.php" ]; then
 	find /var/www/html -type d -exec chmod 755 {} \;
 	find /var/www/html -type f -exec chmod 644 {} \;
 	echo "WordPress install complete"
+else
+	echo "Waiting for MariaDB..."
+	while ! mariadb -h"${SQL_HOST}" -u"${SQL_USER}" -p"${DB_PASS}" -e "SELECT 1;" >/dev/null 2>&1; do
+		sleep 1
+	done
+	wp option update home "${WP_URL}" --allow-root
+	wp option update siteurl "${WP_URL}" --allow-root
 fi
 exec "$@"

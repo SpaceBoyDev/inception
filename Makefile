@@ -34,11 +34,11 @@ down:
 cert:
 	mkcert -install
 	mkcert \
-  		-cert-file darmarti.42.fr.pem \
-  		-key-file darmarti.42.fr-key.pem \
-  		darmarti.42.fr
-	chmod 644 darmarti.42.fr.pem
-	chmod 600 darmarti.42.fr-key.pem
+  		-cert-file https://darmarti.42.fr.pem \
+  		-key-file https://darmarti.42.fr-key.pem \
+  		https://darmarti.42.fr
+	chmod 644 https://darmarti.42.fr.pem
+	chmod 600 https://darmarti.42.fr-key.pem
 
 clean:
 	docker compose -f $(COMPOSE_FILE) down -v
@@ -48,6 +48,7 @@ fclean: clean
 	@sudo rm -rf $(DATA_DIR)
 	docker system prune -af
 	docker volume prune -f
+	sudo rm -rf /home/darmarti/data/wordpress /home/darmarti/data/mariadb
 
 re: fclean all
 
