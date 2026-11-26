@@ -13,4 +13,4 @@ WP_TITLE=inception
 WP_ADMIN_USER=darmarti42
 WP_ADMIN_EMAIL=darmarti42@example.com
 WP_USER=darmarti
-WP_USER_EMAIL=darmarti@example.com" >> srcs/.env
+WP_USER_EMAIL=darmarti@example.com" > srcs/.env
