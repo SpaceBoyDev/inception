@@ -1,43 +1,31 @@
-# User documentation
+# USER_DOC.md — User documentation
 
-## What the stack provides
+## Services provided
 
-This project provides a WordPress website with:
+The project runs three services:
 
-- **NGINX** as the HTTPS entrypoint and web server.
-- **WordPress/PHP-FPM** as the application layer.
-- **MariaDB** as the WordPress database.
+- **NGINX** receives website requests over HTTPS.
+- **WordPress/PHP-FPM** runs the website.
+- **MariaDB** stores the website's database.
 
-The containers communicate on the private `inception-network`. The website files and database are stored persistently under `/home/$USER/data`.
+NGINX is the only service exposed to the host, on port 443. The services communicate with each other over a private Docker network.
 
-## Requirements and first access
+## Start and stop the project
 
-Install Docker Engine, Docker Compose v2, and `make`. Add the domain to the local hosts file if this is a local installation:
+You need Docker Engine, Docker Compose v2, GNU Make, the local `srcs/.env` file, and the password files listed under [Credentials](#credentials).
 
-```text
-127.0.0.1 darmarti.42.fr
-```
-
-Open:
-
-```text
-https://darmarti.42.fr
-```
-
-The administration panel is:
-
-```text
-https://darmarti.42.fr/wp-admin/
-```
-
-The first browser connection may require trusting the local `mkcert` CA. A certificate generated for another domain will not be valid for `darmarti.42.fr`.
-
-## Start and stop
-
-From the repository root:
+From the project directory, start the stack with:
 
 ```bash
-make up
+make
+```
+
+This prepares the host directories and domain entry, builds the images, and starts the services. It may ask for your `sudo` password.
+
+To stop services but keep their containers:
+
+```bash
+make stop
 ```
 
 To stop and remove the project containers:
@@ -46,73 +34,65 @@ To stop and remove the project containers:
 make down
 ```
 
-To build images after changing a Dockerfile or configuration copied into an image:
+To start the existing services again:
 
 ```bash
-make build
 make up
 ```
 
-To perform a complete reset:
+Avoid `make clean`, `make fclean`, and `make re` unless you intend to clean Docker resources or delete stored website and database data.
 
-```bash
-make re
+## Access the website
+
+The current site address is:
+
+```text
+https://darmarti.42.fr
 ```
 
-`make re` is destructive. It removes `/home/$USER/data`, including the MariaDB database and WordPress files.
+The WordPress administration panel is:
+
+```text
+https://darmarti.42.fr/wp-admin/
+```
+
+The current domain is `darmarti.42.fr`. The `make` command adds it to the host's `/etc/hosts` file.
+
+**A browser certificate warning is expected:** NGINX currently serves a self-signed certificate. The mkcert commands in the Makefile are commented out, and NGINX is not configured to use a mkcert certificate.
 
 ## Credentials
 
-The Compose project reads non-secret settings from `srcs/.env`. Passwords are stored in:
+Password files are stored in the project's `secrets/` directory:
 
-```text
-secrets/db_password.txt
-secrets/db_root_password.txt
-```
+| File | Used for |
+|---|---|
+| `db_root_password.txt` | MariaDB root account |
+| `db_password.txt` | WordPress's MariaDB account |
+| `wp_admin_password.txt` | WordPress administrator account |
+| `wp_user_password.txt` | Additional WordPress author account |
 
-These files are mounted inside the appropriate containers under `/run/secrets`. Do not put passwords in `srcs/.env`, Dockerfiles, screenshots, logs, or Git commits.
+Set these passwords before the first start. Account names are configured in `srcs/.env` (`SQL_USER`, `WP_ADMIN_USER`, and `WP_USER`); MariaDB's root account is named `root`. Do not put passwords in `.env` or commit the files; Git ignores the `secrets/` directory. The `example_secrets.sh` script writes placeholder values, so replace them with your own secure passwords.
 
-If a password is changed, recreate or reinitialize the affected service consistently. Existing MariaDB users keep their old password until it is changed in MariaDB or the database data is deliberately reinitialized.
+MariaDB saves account credentials in its persistent data directory during its first initialization. Changing a password file later does not automatically change an existing MariaDB account's password.
 
-## Check service health
+## Check that the services are running
 
-List container status:
+Show service status:
 
 ```bash
 docker compose -f srcs/docker-compose.yml ps
 ```
 
-View logs:
+See recent logs for all three services:
 
 ```bash
-docker logs nginx
-docker logs wordpress
-docker logs mariadb
+docker compose -f srcs/docker-compose.yml logs --tail=50 nginx wordpress mariadb
 ```
 
-Check the database container:
+Check NGINX's configuration:
 
 ```bash
-docker exec mariadb mariadb-admin \
-  --socket=/run/mysqld/mysqld.sock ping
+docker compose -f srcs/docker-compose.yml exec nginx nginx -t
 ```
 
-Check that the WordPress files are visible to NGINX:
-
-```bash
-docker exec nginx test -r /var/www/html/index.php
-```
-
-A successful command returns exit status `0`. If the site returns `403`, inspect NGINX logs and check that `/home/$USER/data/wordpress` and its files are readable by the container's `www-data` user. If WordPress reports a database error, inspect both the WordPress and MariaDB logs without printing passwords.
-
-## Data and backups
-
-The persistent data is stored on the host in:
-
-```text
-/home/$USER/data/mariadb
-/home/$USER/data/wordpress
-```
-
-Back up these directories only when the services are stopped or when using a database-aware backup procedure. Restoring a database directory must preserve ownership and permissions.
-
+If a service is not running or the website does not load, review its logs for startup or connection errors.

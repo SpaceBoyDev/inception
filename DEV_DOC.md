@@ -1,90 +1,68 @@
-# Developer documentation
+# DEV_DOC.md — Developer documentation
 
-## Architecture
+## Set up the environment
 
-The stack is defined in [`srcs/docker-compose.yml`](./srcs/docker-compose.yml) and contains three services:
+### Prerequisites
 
-| Service | Responsibility | Internal endpoint |
-|---|---|---|
-| `nginx` | TLS termination and reverse proxy | `443` from the host |
-| `wordpress` | WordPress and PHP-FPM | `wordpress:9000` |
-| `mariadb` | WordPress database | `mariadb:3306` |
+Install Docker Engine, the Docker Compose v2 plugin, and GNU Make. The Makefile also uses `sudo`, `hostname`, `awk`, and `sed`.
 
-All services use the `inception-network` bridge network. NGINX is the only public entrypoint. WordPress and MariaDB are not published to host ports.
+Run commands from the repository root. Before starting the stack, provide:
 
-## Prerequisites
+- `srcs/.env` with the configuration variables listed below.
+- Four password files in `secrets/`, referenced by `srcs/docker-compose.yml`:
 
-Install:
+  ```text
+  db_root_password.txt
+  db_password.txt
+  wp_admin_password.txt
+  wp_user_password.txt
+  ```
 
-- Docker Engine.
-- Docker Compose v2.
-- GNU Make.
-- OpenSSL; `mkcert` is recommended for locally trusted development certificates.
+Compose mounts these files into the relevant containers under `/run/secrets`. `.env` and `secrets/` are ignored by Git; do not commit real credentials.
 
-The host must resolve the configured domain:
+`example_env.sh` deletes and recreates `srcs/.env`. `example_secrets.sh` writes placeholder passwords. Inspect these scripts before using them and replace all placeholders with secure values.
 
-```text
-127.0.0.1 darmarti.42.fr
-```
+### Configuration
 
-The repository also expects certificate files at the paths mounted by Compose:
+`srcs/.env` supplies non-secret values to Compose. The current configuration uses:
 
 ```text
-darmarti.42.fr.pem
-darmarti.42.fr-key.pem
+DOMAIN_NAME
+DATA_PATH
+SQL_DATABASE
+SQL_USER
+SQL_HOST
+WP_URL
+WP_TITLE
+WP_ADMIN_USER
+WP_ADMIN_EMAIL
+WP_USER
+WP_USER_EMAIL
 ```
 
-## Configuration
+Set `DATA_PATH` to the host directory where persistent data should live. Keep it aligned with `DATA_DIR` in the Makefile, which is `/home/$USER/data`. The current local configuration uses `/home/darmarti/data`.
 
-### Environment configuration
-
-Edit `srcs/.env` for non-secret values such as:
-
-```text
-DOMAIN_NAME=darmarti.42.fr
-MYSQL_DATABASE=wordpress_db
-MYSQL_USER=wp_user
-```
-
-Do not store passwords in `.env` for this project. Compose reads the secret files declared at the bottom of `srcs/docker-compose.yml`:
-
-```yaml
-secrets:
-  db_root_password:
-    file: ../secrets/db_root_password.txt
-  db_password:
-    file: ../secrets/db_password.txt
-```
-
-The resulting paths inside containers are `/run/secrets/db_root_password` and `/run/secrets/db_password`. The MariaDB and WordPress startup scripts explicitly read those files.
-
-### Build contexts
-
-Each service has an independent build context:
-
-```text
-srcs/requirements/mariadb/
-srcs/requirements/nginx/
-srcs/requirements/wordpress/
-```
-
-Configuration files are copied into the images by their Dockerfiles. After changing a Dockerfile or copied configuration, rebuild the affected service.
+The Makefile also sets `DOMAIN_NAME` independently for its `/etc/hosts` update. If changing the domain, keep the Makefile value, `DOMAIN_NAME`, and `WP_URL` consistent.
 
 ## Build and launch
 
-From the repository root:
+The default Makefile target performs setup, builds images, and starts the stack:
 
 ```bash
+make
+```
+
+The targets can also be run separately:
+
+```bash
+make setup
 make build
 make up
 ```
 
-The `build` target first creates:
-
-```text
-/home/$USER/data/mariadb
-/home/$USER/data/wordpress
-```
+- `setup` creates host data directories, sets their permissions to `777`, and replaces the domain entry in `/etc/hosts` with the first IP returned by `hostname -I`.
+- `build` creates missing data directories and runs `docker compose build`.
+- `up` runs `docker compose up -d`. It does not run setup or build first.
 
 Equivalent Compose commands:
 
@@ -93,100 +71,44 @@ docker compose -f srcs/docker-compose.yml build
 docker compose -f srcs/docker-compose.yml up -d
 ```
 
-For a clean rebuild:
+Compose defines three services: NGINX, WordPress/PHP-FPM, and MariaDB. They communicate over the `inception` bridge network. Only NGINX publishes a port to the host (`443`).
+
+## Manage containers and volumes
+
+Makefile lifecycle commands:
 
 ```bash
-make re
+make up       # Start services
+make stop     # Stop services, keep containers
+make down     # Stop and remove containers and network
+make build    # Build service images
 ```
 
-This runs the destructive `fclean` target, removes Docker resources, deletes `/home/$USER/data`, and rebuilds the stack. Never use it as a routine deployment command when data must be retained.
-
-## Container and volume management
-
-Useful commands:
+Useful Compose commands:
 
 ```bash
 docker compose -f srcs/docker-compose.yml ps
-docker compose -f srcs/docker-compose.yml logs -f nginx
-docker compose -f srcs/docker-compose.yml restart wordpress
+docker compose -f srcs/docker-compose.yml logs --tail=100
+docker compose -f srcs/docker-compose.yml restart nginx
 docker compose -f srcs/docker-compose.yml exec wordpress sh
 docker compose -f srcs/docker-compose.yml exec mariadb sh
-docker inspect mariadb
-docker inspect wordpress
 docker volume ls
 docker volume inspect srcs_mariadb_data
 docker volume inspect srcs_wordpress_data
 ```
 
-The Compose volume declarations map the persistent database and website storage to:
+`make clean` runs `docker compose down -v`, then `docker system prune -af`. This prune affects unused Docker resources across the host, not only this project. `make fclean` additionally removes host data directories. `make re` runs `fclean` before rebuilding, so it is destructive. Check the configured paths and back up data before using these targets.
 
-```text
-/home/$USER/data/mariadb
-/home/$USER/data/wordpress
-```
+## Data location and persistence
 
-The `mariadb` service mounts the first volume at `/var/lib/mysql`. Both `wordpress` and `nginx` mount the second at `/var/www/html`. Keep the two data directories separate.
+Compose declares two named volumes backed by host directories:
 
-## Service implementation
+| Volume | Host path | Container path |
+|---|---|---|
+| `mariadb_data` | `${DATA_PATH}/mariadb` | `/var/lib/mysql` |
+| `wordpress_data` | `${DATA_PATH}/wordpress` | `/var/www/html` |
 
-### MariaDB
+Both WordPress and NGINX mount `wordpress_data`, so NGINX serves the files managed by WordPress. MariaDB uses the separate `mariadb_data` volume.
 
-`srcs/requirements/mariadb/tools/init_db.sh`:
-
-1. Reads the root and application passwords from Docker secret files.
-2. Initializes the data directory if it is empty.
-3. Starts a temporary local MariaDB server.
-4. Creates the database and application user.
-5. Grants the application user access to the WordPress database.
-6. Stops the temporary server and starts MariaDB in the foreground.
-
-The data directory is persistent, so initialization logic is not equivalent to a migration system. Changes to credentials must account for users already stored in the existing database.
-
-### WordPress
-
-`srcs/requirements/wordpress/tools/setup_wordpress.sh` reads the database password secret, downloads WordPress when `wp-config.php` is absent, writes the database configuration, sets ownership and permissions, and starts PHP-FPM in the foreground.
-
-The PHP-FPM pool listens on `wordpress:9000`. It does not expose a host port.
-
-### NGINX
-
-`srcs/requirements/nginx/conf/nginx.conf`:
-
-- redirects HTTP to HTTPS;
-- accepts TLS connections on port 443;
-- serves `/var/www/html`;
-- forwards PHP requests to `wordpress:9000`;
-- enables TLS 1.2 and TLS 1.3.
-
-`generate_ssl.sh` ensures the certificate paths exist, validates the NGINX configuration with `nginx -t`, and starts NGINX in the foreground. In the local setup, the certificate and key are mounted from the repository root.
-
-## Troubleshooting
-
-Check the full startup sequence:
-
-```bash
-docker compose -f srcs/docker-compose.yml ps
-docker logs mariadb --tail 100
-docker logs wordpress --tail 100
-docker logs nginx --tail 100
-```
-
-For a database connection error, verify that:
-
-1. `mariadb` is running and listening on the Compose network.
-2. WordPress uses `DB_HOST=mariadb`.
-3. `/run/secrets/db_password` exists in the WordPress container.
-4. The MariaDB application user and password match the secret.
-5. An old `wp-config.php` is not preserving an earlier password.
-
-For a `403 Forbidden`, verify that both containers see the same `/var/www/html`, that `index.php` exists, and that the directories are traversable and files readable by NGINX's `www-data` user.
-
-For port conflicts:
-
-```bash
-sudo ss -ltnp | grep -E ':80|:443'
-docker ps --format 'table {{.Names}}\t{{.Ports}}'
-```
-
-Stop the conflicting service before starting NGINX. The project is designed to expose only the NGINX entrypoint to the host.
+The data remains on the host when containers are stopped or recreated. `make down` does not request volume removal. `make clean` removes the Compose volume resources but does not explicitly delete the host directories. `make fclean` does delete host data: it removes `/home/$USER/data` and also contains hard-coded removal paths under `/home/darmarti/data/`.
 
