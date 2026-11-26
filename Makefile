@@ -31,14 +31,16 @@ up:
 down:
 	docker compose -f $(COMPOSE_FILE) down
 
-cert:
-	mkcert -install
-	mkcert \
-  		-cert-file https://darmarti.42.fr.pem \
-  		-key-file https://darmarti.42.fr-key.pem \
-  		https://darmarti.42.fr
-	chmod 644 https://darmarti.42.fr.pem
-	chmod 600 https://darmarti.42.fr-key.pem
+# cert:
+# 	sudo apt-get update
+# 	sudo apt-get install -y mkcert libnss3-tools
+# 	mkcert -install
+# 	mkcert \
+# 		-cert-file $(DOMAIN_NAME).pem \
+# 		-key-file $(DOMAIN_NAME)-key.pem \
+# 		$(DOMAIN_NAME)
+# 	chmod 644 $(DOMAIN_NAME).pem
+# 	chmod 600 $(DOMAIN_NAME)-key.pem
 
 clean:
 	docker compose -f $(COMPOSE_FILE) down -v
@@ -46,10 +48,9 @@ clean:
 
 fclean: clean
 	@sudo rm -rf $(DATA_DIR)
-	docker system prune -af
 	docker volume prune -f
 	sudo rm -rf /home/darmarti/data/wordpress /home/darmarti/data/mariadb
 
 re: fclean all
 
-.PHONY: all setup build stop up down clean fclean re
+.PHONY: all setup build stop up down cert clean fclean re
