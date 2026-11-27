@@ -1,4 +1,4 @@
-º#!/bin/bash
+#!/bin/bash
 
 rm srcs/.env
 echo "DOMAIN_NAME=darmarti.42.fr
