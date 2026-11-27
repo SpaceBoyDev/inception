@@ -97,6 +97,62 @@ docker volume inspect srcs_mariadb_data
 docker volume inspect srcs_wordpress_data
 ```
 
+### Log in to MariaDB
+
+The MariaDB container is named `mariadb`. Log in as root from the host with:
+
+```bash
+docker exec -it mariadb mariadb -u root -p
+```
+
+Enter the password stored in `secrets/db_root_password.txt` when prompted. To log in as the application user instead, use the `SQL_USER` and `SQL_DATABASE` values from `srcs/.env`:
+
+```bash
+docker exec -it mariadb mariadb -u YOUR_SQL_USER -p YOUR_SQL_DATABASE
+```
+
+Replace `YOUR_SQL_USER` and `YOUR_SQL_DATABASE` with those configured values; enter the password from `secrets/db_password.txt` when prompted. Once connected, use `SHOW DATABASES;`, `USE database_name;`, and `SHOW TABLES;` to explore. The Compose file does not publish MariaDB's port to the host, so connect with `docker exec` rather than `localhost:3306`.
+
+Useful commands to run at the MariaDB prompt:
+
+```sql
+SHOW DATABASES;
+USE database_name;
+SHOW TABLES;
+DESCRIBE table_name;
+SELECT * FROM table_name LIMIT 10;
+```
+
+To list WordPress users, first check the users table name, then select non-password fields. WordPress normally uses `wp_users`; use the actual table name if its prefix was changed:
+
+```sql
+SHOW TABLES LIKE '%users';
+SELECT ID, user_login, user_email, user_registered FROM wp_users;
+```
+
+Exit the MariaDB client with `exit;` or `\q`.
+
+### Testing access on other ports
+
+From the Docker host, try HTTP on port 80 or another port such as 8080:
+
+```bash
+curl -v --connect-timeout 3 http://localhost:80/
+curl -v --connect-timeout 3 http://localhost:8080/
+```
+
+Replace `localhost` with the server's hostname or IP to test remotely. The current Compose configuration publishes only port 443, so connections to other ports should fail unless the port is both published by Compose and configured as an NGINX listener.
+
+### Checking the negotiated TLS version
+
+Use OpenSSL to check which TLS version the server negotiates:
+
+```bash
+openssl s_client -connect darmarti.42.fr:443 -servername darmarti.42.fr -brief </dev/null
+```
+
+Check the `Protocol version` line for `TLSv1.2` or `TLSv1.3`. Replace `darmarti.42.fr` with the configured domain if it differs.
+
 `make clean` runs `docker compose down -v`, then `docker system prune -af`. This prune affects unused Docker resources across the host, not only this project. `make fclean` additionally removes host data directories. `make re` runs `fclean` before rebuilding, so it is destructive. Check the configured paths and back up data before using these targets.
 
 ## Data location and persistence
